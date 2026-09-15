@@ -10,6 +10,21 @@ def test_deepfake_detector_fallback():
     assert "confidence" in res
     assert "signals" in res
 
+
+def test_generic_upload_filename_does_not_default_to_genuine():
+    dummy_audio = b"RIFF" + b"\x00" * 500
+    res = detector.analyze_audio_bytes(dummy_audio, filename="voice_sample.wav")
+    assert res["classification"] != "LIKELY GENUINE"
+    assert res["classification"] in {"INSUFFICIENT AUDIO QUALITY", "UNCERTAIN", "SUSPICIOUS DEEPFAKE"}
+
+
+def test_generic_upload_is_conservative_when_no_model_evidence_exists():
+    dummy_audio = b"RIFF" + b"\x00" * 1000
+    res = detector.analyze_audio_bytes(dummy_audio, filename="recording.wav")
+    assert res["deepfake_probability"] <= 60.0
+    assert res["classification"] != "LIKELY GENUINE"
+
+
 def test_speaker_verification_cosine():
     emb1 = [0.1] * 32
     emb2 = [0.1] * 32

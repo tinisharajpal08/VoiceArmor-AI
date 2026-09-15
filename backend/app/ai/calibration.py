@@ -43,14 +43,14 @@ class ProbabilityCalibrator:
         uncertainty = float((1.0 - dist_from_border) * 10.0 + (1.0 - confidence) * 8.0)
         uncertainty = max(2.0, min(14.0, uncertainty))
 
-        # Decision Threshold Calibration (0.65 threshold for security product to avoid false positives)
-        DECISION_THRESHOLD = 0.65
-        UNCERTAIN_MARGIN = 0.12
+        # Prototype calibration policy: missing evidence must not be silently treated as genuine.
+        # This project does not include a trained anti-spoof model, so raw acoustic scores must be
+        # interpreted conservatively and never default to "LIKELY GENUINE" for ordinary uploads.
+        DECISION_THRESHOLD = 0.72
+        UNCERTAIN_MARGIN = 0.15
 
-        if calibrated_prob > (DECISION_THRESHOLD + UNCERTAIN_MARGIN / 2.0):
+        if calibrated_prob >= (DECISION_THRESHOLD - UNCERTAIN_MARGIN / 2.0):
             classification = "SUSPICIOUS DEEPFAKE"
-        elif calibrated_prob < (DECISION_THRESHOLD - UNCERTAIN_MARGIN):
-            classification = "LIKELY GENUINE"
         else:
             classification = "UNCERTAIN"
 

@@ -80,6 +80,9 @@ class DeepfakeDetector:
         if self.mode == "DEMO" or len(audio_bytes) < 100:
             return self._demo_analysis(audio_bytes, filename, q_eval)
 
+        # Conservative prototype behavior: when the project is not using a trained anti-spoof model,
+        # unlabeled audio must not silently default to "LIKELY GENUINE".
+
         try:
             if HAS_LIBROSA:
                 return self._lightweight_analysis(audio_bytes, filename, language, q_eval)
@@ -101,6 +104,9 @@ class DeepfakeDetector:
 
         if len(y) == 0:
             return self._demo_analysis(audio_bytes, filename, q_eval)
+
+        # If there is no explicit synthetic signal, the prototype detector must stay uncertain.
+        # Do not treat ordinary uploads as genuine without model evidence.
 
         # 1. Replay & Channel Analysis
         rep_eval = replay_detector.analyze(audio_bytes)
@@ -140,13 +146,17 @@ class DeepfakeDetector:
 
         # Raw Model Combined Score
         raw_model_score = (0.40 * vocoder_sig + 0.30 * prosodic_sig + 0.15 * spectral_sig + 0.15 * temporal_sig)
-        
-        # Apply Platt Scaling & Temperature Calibration
-        # Good speech with natural pitch variance (~30-60Hz) will yield raw_model_score < 0.20 => calibrated < 10%
+
+        # Apply Platt Scaling & Temperature Calibration.
+        # This project does not include a trained anti-spoof classifier, so a low acoustic score
+        # must remain UNCERTAIN instead of being falsely labeled as genuine.
         cal_res = calibrator.calibrate(raw_model_score, confidence_factors=0.95 if q_eval["snr_db"] > 15 else 0.85)
 
         calibrated_prob = cal_res["calibrated_deepfake_probability"]
         classification = cal_res["classification"]
+        if classification == "LIKELY GENUINE":
+            classification = "UNCERTAIN"
+            calibrated_prob = max(calibrated_prob, 35.0)
         confidence = cal_res["detection_confidence"]
         uncertainty = cal_res["uncertainty_pm"]
 
@@ -225,10 +235,11 @@ class DeepfakeDetector:
             confidence = 94.5
             uncertainty = 3.0
         else:
-            prob = 8.4
-            classification = "LIKELY GENUINE"
-            confidence = 92.0
-            uncertainty = 4.0
+            # Generic uploads must not default to genuine; the project lacks a validated anti-spoof model.
+            prob = 48.0
+            classification = "UNCERTAIN"
+            confidence = 63.0
+            uncertainty = 12.0
 
         return {
             "engine_mode": "DEMO MODE (SIH CONTROLLED)",

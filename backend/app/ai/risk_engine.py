@@ -110,7 +110,7 @@ class RiskEngine:
         if final_score <= self.low_thresh and classification == "LIKELY GENUINE":
             level = "LOW"
             color_code = "GREEN"
-            action = "ALLOW / MONITOR"
+            action = "MONITOR"
             action_description = "Acoustic features indicate genuine human voice. Continue standard call channel."
             restricted = False
             verification_required = False
