@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Filter, Download, Eye, Trash2, FileText } from 'lucide-react';
 import { fetchIncidents, downloadIncidentReport, clearIncidents } from '../utils/api';
+import { clearChallengeAudit, readChallengeAudit } from '../utils/challenge';
 import IncidentDetailModal from './IncidentDetailModal';
 
 export default function IncidentCenter() {
@@ -9,11 +10,16 @@ export default function IncidentCenter() {
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const mergeChallengeAudit = (serverIncidents) => {
+    const localIncidents = readChallengeAudit().map((record) => ({ ...record, timestamp: record.timestamp, incident_id: record.incident_id, deepfake_probability: 0, risk_score: record.riskScoreAfter, risk_level: record.risk_level, recommended_action: record.enforcedAction, verification_status: record.outcome, explanations: [`Challenge phrase: ${record.issuedPhrase}`, `Response similarity: ${Math.round(record.similarityScore * 100)}%`, `Latency: ${record.latencyMs}ms`, `Evidence hash: ${record.evidenceHash}`], audio_hash: record.evidenceHash }));
+    return [...localIncidents, ...serverIncidents];
+  };
+
   const loadIncidents = async () => {
     setIsLoading(true);
     try {
       const data = await fetchIncidents(filterLevel);
-      setIncidents(data);
+      setIncidents(mergeChallengeAudit(data));
     } catch (err) {
       console.error(err);
     } finally {
@@ -23,12 +29,16 @@ export default function IncidentCenter() {
 
   useEffect(() => {
     loadIncidents();
+    const refresh = () => loadIncidents();
+    window.addEventListener('voicearmor:challenge-audit', refresh);
+    return () => window.removeEventListener('voicearmor:challenge-audit', refresh);
   }, [filterLevel]);
 
   const handleClearAll = async () => {
     if (!window.confirm("Clear all incident logs from system memory?")) return;
     try {
       await clearIncidents();
+      clearChallengeAudit();
       loadIncidents();
     } catch (err) {
       alert("Failed to clear incidents.");

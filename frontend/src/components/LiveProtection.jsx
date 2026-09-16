@@ -51,6 +51,15 @@ export default function LiveProtection({ onOpenVerification }) {
     ]);
   };
 
+  const handleVerificationResult = ({ outcome, riskScore }) => {
+    setCurrentRisk(riskScore);
+    const nextLevel = riskScore <= 20 ? 'LOW' : riskScore <= 50 ? 'MODERATE' : riskScore <= 75 ? 'HIGH' : 'CRITICAL';
+    const nextAction = riskScore <= 20 ? 'MONITOR' : riskScore <= 50 ? 'WARN' : riskScore <= 75 ? 'REQUIRE SECONDARY VERIFICATION' : 'ALERT + RESTRICT SENSITIVE ACTION';
+    setRiskLevel(nextLevel);
+    setActionStatus(outcome === 'PASS' ? 'VERIFIED · ' + nextAction : outcome === 'EXPIRED' ? 'CHALLENGE TIMEOUT · ' + nextAction : outcome === 'FAIL' ? 'VERIFICATION_FAILED · ' + nextAction : nextAction);
+    setTimeline((t) => [...t.slice(-10), { time: new Date().toLocaleTimeString().slice(3, 8), risk: riskScore }]);
+  };
+
   return (
     <div className="space-y-6">
       
@@ -129,7 +138,7 @@ export default function LiveProtection({ onOpenVerification }) {
           {/* Challenge Verification Trigger */}
           {riskLevel !== 'LOW' && (
             <button
-              onClick={() => onOpenVerification && onOpenVerification('INC-LIVE-001')}
+              onClick={() => onOpenVerification && onOpenVerification('INC-LIVE-001', currentRisk, handleVerificationResult)}
               className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg transition-all"
             >
               Issue Challenge Phrase Verification

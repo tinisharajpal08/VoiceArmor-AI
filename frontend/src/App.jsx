@@ -17,7 +17,7 @@ export default function App() {
   const [dashboardData, setDashboardData] = useState(null);
   const [speakers, setSpeakers] = useState([]);
   
-  const [verificationIncidentId, setVerificationIncidentId] = useState(null);
+  const [verificationContext, setVerificationContext] = useState(null);
 
   const loadData = async () => {
     try {
@@ -38,8 +38,8 @@ export default function App() {
     loadData();
   }, []);
 
-  const handleOpenVerification = (incidentId) => {
-    setVerificationIncidentId(incidentId);
+  const handleOpenVerification = (incidentId, riskScore = 50, onResult = null) => {
+    setVerificationContext({ incidentId, riskScore, onResult });
   };
 
   return (
@@ -127,11 +127,15 @@ export default function App() {
       </footer>
 
       {/* Verification Challenge Modal */}
-      {verificationIncidentId && (
+      {verificationContext && (
         <VerificationModal
-          incidentId={verificationIncidentId}
-          onClose={() => setVerificationIncidentId(null)}
-          onSuccess={() => loadData()}
+          incidentId={verificationContext.incidentId}
+          riskScore={verificationContext.riskScore}
+          onClose={() => setVerificationContext(null)}
+          onResult={(result) => {
+            verificationContext.onResult?.(result);
+            loadData();
+          }}
         />
       )}
 
